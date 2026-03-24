@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { WASI } from "node:wasi";
 import { encodeGif } from "../src/gif.ts";
 import { parseMp4Video } from "../src/mp4.ts";
@@ -20,6 +21,7 @@ interface DecoderExports {
 
 const META_FIELDS = 10;
 const PIX_FMT_YUV420P = 0;
+const wasmPath = resolve(process.cwd(), "native/out/decoder.wasm");
 
 class NativeDecoder {
   private readonly exports: DecoderExports;
@@ -31,7 +33,7 @@ class NativeDecoder {
   }
 
   static async create(track: Mp4TrackInfo): Promise<NativeDecoder> {
-    const bytes = readFileSync("/Users/crab/Documents/Playground/native/out/decoder.wasm");
+    const bytes = readFileSync(wasmPath);
     const module = await WebAssembly.compile(bytes);
     const wasi = new WASI({
       version: "preview1"

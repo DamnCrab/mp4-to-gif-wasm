@@ -1,5 +1,6 @@
 import { performance } from "node:perf_hooks";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { WASI } from "node:wasi";
 import { encodeGif } from "../src/gif.ts";
 import { parseMp4Video } from "../src/mp4.ts";
@@ -19,7 +20,7 @@ interface DecoderExports {
 }
 
 const META_FIELDS = 10;
-const wasmBytes = readFileSync("/Users/crab/Documents/Playground/native/out/decoder.wasm");
+const wasmBytes = readFileSync(resolve(process.cwd(), "native/out/decoder.wasm"));
 const wasmModule = await WebAssembly.compile(wasmBytes);
 
 class NativeDecoder {
