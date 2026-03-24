@@ -1,0 +1,15 @@
+.DS_Store
+node_modules/
+vendor/
+native/out/
+!native/out/
+native/out/*
+!native/out/decoder.wasm
+.cache/
+.wrangler/
+dist/
+coverage/
+npm-debug.log*
+.npm-cache/
+tmp-*.mts
+scripts/tmp-*.mts

@@ -1,0 +1,71 @@
+{
+  "name": "mp4-to-gif-wasm",
+  "version": "0.1.0",
+  "description": "MP4 to GIF conversion with a bundled FFmpeg-based WebAssembly H.264 decoder and GIF pipeline.",
+  "license": "LGPL-2.1-or-later",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DamnCrab/mp4-to-gif-wasm.git"
+  },
+  "homepage": "https://github.com/DamnCrab/mp4-to-gif-wasm#readme",
+  "bugs": {
+    "url": "https://github.com/DamnCrab/mp4-to-gif-wasm/issues"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "import": "./dist/worker.js"
+    }
+  },
+  "files": [
+    "dist",
+    "native/out/decoder.wasm",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY.md",
+    "wrangler.toml"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "npm run build:js && npm run size",
+    "build:js": "tsc -p tsconfig.build.json",
+    "check": "tsc --noEmit",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "prepare:ffmpeg": "bash ./scripts/prepare-ffmpeg.sh",
+    "test": "vitest run",
+    "test:real-videos": "npx vite-node --script ./scripts/real-video-boundary-check.mts",
+    "test:e2e-native": "npx vite-node --script ./scripts/e2e-native-check.mts",
+    "test:all": "npm run check && npm test && npm run build:native && npm run build && npm run test:real-videos && npm run test:e2e-native && npx wrangler deploy --dry-run",
+    "build:native": "node ./scripts/build-native.mjs",
+    "size": "node ./scripts/report-size.mjs"
+  },
+  "keywords": [
+    "gif",
+    "mp4",
+    "wasm",
+    "ffmpeg",
+    "h264"
+  ],
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.9.1"
+  },
+  "dependencies": {
+    "mp4box": "^2.1.2"
+  }
+}
