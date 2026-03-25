@@ -48,4 +48,3 @@ jobs:
           npm run build
           npm run test:real-videos
           npm run test:e2e-native
-          npx wrangler deploy --dry-run

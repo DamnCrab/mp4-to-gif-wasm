@@ -4,20 +4,26 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VENDOR_DIR="$ROOT_DIR/vendor"
 FFMPEG_DIR="$VENDOR_DIR/ffmpeg"
-FFMPEG_REPO="${FFMPEG_REPO:-https://github.com/FFmpeg/FFmpeg.git}"
-FFMPEG_REF="${FFMPEG_REF:-n7.1.1}"
+FFMPEG_PATH="vendor/ffmpeg"
 
 mkdir -p "$VENDOR_DIR"
 
-if [ ! -d "$FFMPEG_DIR/.git" ]; then
-  git clone --depth 1 --branch "$FFMPEG_REF" "$FFMPEG_REPO" "$FFMPEG_DIR"
+if [ ! -d "$ROOT_DIR/.git" ]; then
+  echo "This script must run from a git checkout of the repository." >&2
+  exit 1
+fi
+
+if [ ! -f "$ROOT_DIR/.gitmodules" ]; then
+  echo "Missing .gitmodules; vendor/ffmpeg is expected to be a git submodule." >&2
+  exit 1
+fi
+
+git -C "$ROOT_DIR" submodule sync -- "$FFMPEG_PATH"
+git -C "$ROOT_DIR" submodule update --init --depth 1 -- "$FFMPEG_PATH"
+
+if [ -d "$FFMPEG_DIR/.git" ] || [ -f "$FFMPEG_DIR/.git" ]; then
   exit 0
 fi
 
-current_ref="$(git -C "$FFMPEG_DIR" describe --tags --always 2>/dev/null || true)"
-if [ "$current_ref" = "$FFMPEG_REF" ]; then
-  exit 0
-fi
-
-git -C "$FFMPEG_DIR" fetch --depth 1 origin "$FFMPEG_REF"
-git -C "$FFMPEG_DIR" checkout --detach FETCH_HEAD
+echo "Unable to initialize FFmpeg submodule at $FFMPEG_DIR." >&2
+exit 1

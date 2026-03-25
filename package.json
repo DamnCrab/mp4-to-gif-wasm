@@ -26,11 +26,10 @@
   },
   "files": [
     "dist",
-    "native/out/decoder.wasm",
     "README.md",
     "LICENSE",
     "THIRD_PARTY.md",
-    "wrangler.toml"
+    "FFMPEG_COMPLIANCE.md"
   ],
   "engines": {
     "node": ">=22.0.0"
@@ -40,15 +39,13 @@
   },
   "scripts": {
     "build": "npm run build:js && npm run size",
-    "build:js": "tsc -p tsconfig.build.json",
+    "build:js": "tsc -p tsconfig.build.json && node ./scripts/prepare-dist.mjs",
     "check": "tsc --noEmit",
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
     "prepare:ffmpeg": "bash ./scripts/prepare-ffmpeg.sh",
     "test": "vitest run",
     "test:real-videos": "npx vite-node --script ./scripts/real-video-boundary-check.mts",
     "test:e2e-native": "npx vite-node --script ./scripts/e2e-native-check.mts",
-    "test:all": "npm run check && npm test && npm run build:native && npm run build && npm run test:real-videos && npm run test:e2e-native && npx wrangler deploy --dry-run",
+    "test:all": "npm run check && npm test && npm run build:native && npm run build && npm run test:real-videos && npm run test:e2e-native",
     "build:native": "node ./scripts/build-native.mjs",
     "size": "node ./scripts/report-size.mjs"
   },
@@ -62,8 +59,7 @@
   "devDependencies": {
     "@types/node": "^24.5.2",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4",
-    "wrangler": "^4.9.1"
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "mp4box": "^2.1.2"

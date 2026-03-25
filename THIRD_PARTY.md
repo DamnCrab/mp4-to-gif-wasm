@@ -7,8 +7,8 @@ This repository depends on upstream projects that are not maintained here.
 ### FFmpeg
 
 - Upstream: [https://github.com/FFmpeg/FFmpeg](https://github.com/FFmpeg/FFmpeg)
-- Local checkout path: `vendor/ffmpeg`
-- Current pinned ref used by helper script: `n7.1.1`
+- Local checkout path: git submodule at `vendor/ffmpeg`
+- Current pinned ref: `n7.1.1`
 - License: LGPL-2.1-or-later for the linked configuration used by this repository
 
 FFmpeg provides:
@@ -46,5 +46,6 @@ Used to build the bundled WebAssembly module.
 
 ## Notes
 
-- `vendor/ffmpeg` is not committed by default; CI and local builds fetch it from the upstream repository.
-- The published npm package includes the generated `native/out/decoder.wasm`.
+- `vendor/ffmpeg` is tracked as a Git submodule so the exact upstream source revision used for builds is recorded in this repository.
+- The published npm package includes the generated `dist/decoder.wasm`.
+- FFmpeg source availability and rebuild instructions are documented in `FFMPEG_COMPLIANCE.md`.

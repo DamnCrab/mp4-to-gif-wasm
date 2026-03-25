@@ -6,7 +6,6 @@ It is usable as:
 
 - a generic npm package
 - a low-level Wasm-backed conversion library
-- a Cloudflare Worker handler when you want an HTTP wrapper
 
 ## Scope
 
@@ -59,28 +58,6 @@ const gif = await convertMp4ToGif(mp4ArrayBuffer, {
 });
 ```
 
-## Worker Endpoint
-
-The included Worker handler exposes:
-
-`POST /v1/mp4-to-gif`
-
-Query parameters:
-
-- `startMs` default `0`
-- `durationMs` default `5000`, max `5000`
-- `fps` default `10`, max `12`
-- `maxWidth` default `320`, max `480`
-- `colors` default `128`, max `256`
-
-Error codes:
-
-- `unsupported_codec`
-- `unsupported_container`
-- `unsupported_feature`
-- `input_too_large`
-- `decode_failed`
-
 ## Development
 
 ```sh
@@ -92,8 +69,19 @@ npm run check
 npm test
 npm run test:real-videos
 npm run test:e2e-native
-npx wrangler deploy --dry-run
 ```
+
+## FFmpeg Source And License Compliance
+
+This package distributes a WebAssembly binary that statically links selected FFmpeg libraries.
+
+- FFmpeg upstream repository: [https://github.com/FFmpeg/FFmpeg](https://github.com/FFmpeg/FFmpeg)
+- Pinned FFmpeg source used for builds: Git submodule at `vendor/ffmpeg`
+- Pinned upstream ref: `n7.1.1`
+- Build script: `native/build-ffmpeg.sh`
+- Submodule bootstrap script: `scripts/prepare-ffmpeg.sh`
+
+For source availability and redistribution details, see `FFMPEG_COMPLIANCE.md`.
 
 ## Native Build Prerequisites
 
@@ -102,20 +90,15 @@ npx wrangler deploy --dry-run
 - Binaryen / `wasm-opt`
 - FFmpeg source checkout in `vendor/ffmpeg`
 
-Fetch the pinned FFmpeg checkout with:
+Initialize the pinned FFmpeg submodule with:
 
 ```sh
 npm run prepare:ffmpeg
 ```
 
-The helper script uses:
-
-- FFmpeg upstream: [https://github.com/FFmpeg/FFmpeg](https://github.com/FFmpeg/FFmpeg)
-- pinned ref: `n7.1.1`
-
 ## Repository Layout
 
-- `src/`: package entrypoints, Worker wrapper, parser, decoder wrapper, types
+- `src/`: package entrypoints, parser, decoder wrapper, types
 - `native/`: FFmpeg build glue and C ABI layer
 - `scripts/`: fixture generation, native build helpers, experiments, benchmarks
 - `test/`: unit and integration tests
@@ -135,4 +118,3 @@ GitHub Actions cover:
 - native Wasm rebuild
 - real-video boundary tests
 - end-to-end Wasm decode/GIF tests
-- Wrangler dry-run packaging
