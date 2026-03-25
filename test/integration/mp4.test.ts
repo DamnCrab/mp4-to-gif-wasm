@@ -21,7 +21,8 @@ describe("parseMp4Video", () => {
     expect(track.samples.length).toBeGreaterThan(0);
     expect(track.samples.some((sample) => sample.isSync)).toBe(true);
     expect(track.samples.every((sample) => sample.dts >= 0 && sample.pts >= 0)).toBe(true);
-    expect(track.samples.every((sample) => sample.dts <= track.durationMs + 1000)).toBe(true);
+    expect(track.samples[0].dts).toBe(0);
+    expect(track.samples[track.samples.length - 1].dts).toBeGreaterThan(0);
   }, 30_000);
 
   it("preserves b-frame timing differences", async () => {

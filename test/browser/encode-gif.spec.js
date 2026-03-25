@@ -11,7 +11,7 @@ test("encodes a GIF in a real browser using dist assets", async ({ page }) => {
   });
 
   const result = await page.evaluate(async () => {
-    const { encodeGif } = await import("/dist/index.js");
+    const { encodeGif } = await import("/dist/gif.js");
     const makePlane = (length, value) => new Uint8Array(length).fill(value);
     const makeFrame = (pts) => ({
       width: 2,

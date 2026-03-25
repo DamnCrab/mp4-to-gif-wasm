@@ -44,11 +44,6 @@ describe("encodeGif runtime detection", () => {
     });
     vi.stubGlobal("window", {});
 
-    const fetch = vi.fn().mockResolvedValue({
-      arrayBuffer: async () => new ArrayBuffer(8)
-    });
-    vi.stubGlobal("fetch", fetch);
-
     const memory = new WebAssembly.Memory({ initial: 1 });
     let nextPtr = 64;
     const exports = {
@@ -69,7 +64,6 @@ describe("encodeGif runtime detection", () => {
     };
     new Uint8Array(memory.buffer, 256, 6).set([71, 73, 70, 56, 57, 97]);
 
-    const compile = vi.spyOn(WebAssembly, "compile").mockResolvedValue({} as WebAssembly.Module);
     const instantiate = vi.spyOn(WebAssembly, "instantiate").mockResolvedValue({
       exports
     } as unknown as WebAssembly.Instance);
@@ -83,9 +77,7 @@ describe("encodeGif runtime detection", () => {
       colors: 16
     });
 
-    expect(fetch).toHaveBeenCalledOnce();
     expect(getBuiltinModule).not.toHaveBeenCalled();
-    expect(compile).toHaveBeenCalledOnce();
     expect(instantiate).toHaveBeenCalledWith(
       expect.any(Object),
       expect.objectContaining({

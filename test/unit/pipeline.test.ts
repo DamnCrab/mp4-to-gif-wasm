@@ -52,7 +52,7 @@ describe("convertMp4ToGif", () => {
       colors: 64
     });
 
-    expect(parseMp4Video).toHaveBeenCalledWith(expect.any(ArrayBuffer), 5000, 480);
+    expect(parseMp4Video).toHaveBeenCalledWith(expect.any(ArrayBuffer));
     expect(create).toHaveBeenCalledWith(track);
     expect(decode).toHaveBeenCalledWith(track);
     expect(encodeGif).toHaveBeenCalledWith([frame], expect.objectContaining({ fps: 8 }));
