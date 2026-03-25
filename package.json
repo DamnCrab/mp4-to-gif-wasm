@@ -42,10 +42,13 @@
     "build:js": "tsc -p tsconfig.build.json && node ./scripts/prepare-dist.mjs",
     "check": "tsc --noEmit",
     "prepare:ffmpeg": "bash ./scripts/prepare-ffmpeg.sh",
-    "test": "vitest run",
-    "test:real-videos": "npx vite-node --script ./scripts/real-video-boundary-check.mts",
-    "test:e2e-native": "npx vite-node --script ./scripts/e2e-native-check.mts",
-    "test:all": "npm run check && npm test && npm run build:native && npm run build && npm run test:real-videos && npm run test:e2e-native",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "vitest run --config vitest.config.mjs test/unit",
+    "test:integration": "vitest run --config vitest.config.mjs test/integration",
+    "test:native": "vitest run --config vitest.native.config.mjs",
+    "test:browser": "npm run build && playwright test",
+    "test:coverage": "vitest run --config vitest.config.mjs --coverage",
+    "test:ci": "npm run check && npm run test:coverage && npm run build:native && npm run test:native && npm run test:browser",
     "build:native": "node ./scripts/build-native.mjs",
     "size": "node ./scripts/report-size.mjs"
   },
@@ -57,7 +60,9 @@
     "h264"
   ],
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^24.5.2",
+    "@vitest/coverage-v8": "^3.2.4",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },

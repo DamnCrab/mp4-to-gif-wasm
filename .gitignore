@@ -11,6 +11,8 @@ native/out/*
 .wrangler/
 dist/
 coverage/
+playwright-report/
+test-results/
 npm-debug.log*
 .npm-cache/
 tmp-*.mts

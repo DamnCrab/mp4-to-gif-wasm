@@ -1,18 +1,19 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export const root = "/tmp/cf-worker-video-samples";
-export const downloads = root;
-export const derived = join(root, "derived");
+const root = join(tmpdir(), "mp4-to-gif-real-video-samples");
+const downloads = root;
+const derived = join(root, "derived");
 
-export const originals = {
+const originals = {
   sample5: join(downloads, "sample-5s.mp4"),
   sample10: join(downloads, "sample-10s.mp4"),
   sample15: join(downloads, "sample-15s.mp4")
 };
 
-export const fixtures = {
+export const realFixtures = {
   baseline: join(derived, "real-baseline-ok.mp4"),
   bframes: join(derived, "real-bframes-ok.mp4"),
   fragmented: join(derived, "real-fragmented.mp4"),
@@ -35,6 +36,9 @@ function download(url: string, output: string): void {
 }
 
 function encode(input: string, output: string, args: string[]): void {
+  if (existsSync(output)) {
+    return;
+  }
   quiet("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-i", input, ...args, output]);
 }
 
@@ -43,7 +47,7 @@ export function readArrayBuffer(path: string): ArrayBuffer {
   return file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
 }
 
-export function ensureRealVideoFixtures(): typeof fixtures {
+export function ensureRealVideoFixtures(): typeof realFixtures {
   mkdirSync(downloads, { recursive: true });
   mkdirSync(derived, { recursive: true });
 
@@ -51,7 +55,7 @@ export function ensureRealVideoFixtures(): typeof fixtures {
   download("https://download.samplelib.com/mp4/sample-10s.mp4", originals.sample10);
   download("https://download.samplelib.com/mp4/sample-15s.mp4", originals.sample15);
 
-  encode(originals.sample5, fixtures.baseline, [
+  encode(originals.sample5, realFixtures.baseline, [
     "-t", "4.5",
     "-an",
     "-vf", "scale=480:-2",
@@ -64,7 +68,7 @@ export function ensureRealVideoFixtures(): typeof fixtures {
     "-movflags", "+faststart"
   ]);
 
-  encode(originals.sample5, fixtures.bframes, [
+  encode(originals.sample5, realFixtures.bframes, [
     "-t", "4.5",
     "-an",
     "-vf", "scale=480:-2",
@@ -80,7 +84,7 @@ export function ensureRealVideoFixtures(): typeof fixtures {
     "-movflags", "+faststart"
   ]);
 
-  encode(originals.sample5, fixtures.fragmented, [
+  encode(originals.sample5, realFixtures.fragmented, [
     "-t", "4.5",
     "-an",
     "-vf", "scale=480:-2",
@@ -93,7 +97,7 @@ export function ensureRealVideoFixtures(): typeof fixtures {
     "-movflags", "frag_keyframe+empty_moov+default_base_moof"
   ]);
 
-  encode(originals.sample5, fixtures.oversize, [
+  encode(originals.sample5, realFixtures.oversize, [
     "-t", "4.5",
     "-an",
     "-vf", "scale=640:-2",
@@ -106,7 +110,7 @@ export function ensureRealVideoFixtures(): typeof fixtures {
     "-movflags", "+faststart"
   ]);
 
-  encode(originals.sample10, fixtures.tooLong, [
+  encode(originals.sample10, realFixtures.tooLong, [
     "-t", "6.0",
     "-an",
     "-vf", "scale=480:-2",
@@ -119,7 +123,7 @@ export function ensureRealVideoFixtures(): typeof fixtures {
     "-movflags", "+faststart"
   ]);
 
-  encode(originals.sample5, fixtures.mpeg4, [
+  encode(originals.sample5, realFixtures.mpeg4, [
     "-t", "4.5",
     "-an",
     "-vf", "scale=480:-2",
@@ -129,5 +133,5 @@ export function ensureRealVideoFixtures(): typeof fixtures {
     "-movflags", "+faststart"
   ]);
 
-  return fixtures;
+  return realFixtures;
 }

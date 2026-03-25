@@ -1,10 +1,11 @@
+import { beforeAll, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { WASI } from "node:wasi";
-import { encodeGif } from "../src/gif.ts";
-import { parseMp4Video } from "../src/mp4.ts";
-import type { DecodeFrameMeta, DecodedFrame, Mp4TrackInfo } from "../src/types";
-import { ensureRealVideoFixtures, fixtures, readArrayBuffer } from "./real-video-fixtures.mts";
+import { encodeGif } from "../../src/gif";
+import { parseMp4Video } from "../../src/mp4";
+import type { DecodeFrameMeta, DecodedFrame, Mp4TrackInfo } from "../../src/types";
+import { ensureRealVideoFixtures, realFixtures, readArrayBuffer } from "../helpers/real-video-fixtures";
 
 interface DecoderExports {
   memory: WebAssembly.Memory;
@@ -35,10 +36,8 @@ class NativeDecoder {
   static async create(track: Mp4TrackInfo): Promise<NativeDecoder> {
     const bytes = readFileSync(wasmPath);
     const module = await WebAssembly.compile(bytes);
-    const wasi = new WASI({
-      version: "preview1"
-    });
-    const instance = await WebAssembly.instantiate(module, wasi.getImportObject());
+    const wasi = new WASI({ version: "preview1" });
+    const instance = await WebAssembly.instantiate(module, wasi.getImportObject() as WebAssembly.Imports);
     const exports = instance.exports as unknown as DecoderExports;
     wasi.initialize(instance);
     const decoder = new NativeDecoder(exports);
@@ -143,50 +142,37 @@ class NativeDecoder {
   }
 }
 
-ensureRealVideoFixtures();
+beforeAll(() => {
+  ensureRealVideoFixtures();
+}, 120_000);
 
-const cases = [
-  ["real-baseline-ok.mp4", fixtures.baseline, false],
-  ["real-bframes-ok.mp4", fixtures.bframes, true]
-] as const;
+describe("native wasm end-to-end", () => {
+  const cases = [
+    ["baseline", realFixtures.baseline, false],
+    ["bframes", realFixtures.bframes, true]
+  ] as const;
 
-for (const [name, path, expectBFrame] of cases) {
-  const track = await parseMp4Video(readArrayBuffer(path));
-  const decoder = await NativeDecoder.create(track);
-  const frames = decoder.decode(track);
-  const gif = await encodeGif(frames, {
-    startMs: 0,
-    durationMs: Math.min(track.durationMs, 2000),
-    fps: 8,
-    maxWidth: 160,
-    colors: 64
-  });
+  for (const [name, path, expectBFrame] of cases) {
+    it(name, async () => {
+      const track = await parseMp4Video(readArrayBuffer(path));
+      const decoder = await NativeDecoder.create(track);
+      const frames = decoder.decode(track);
+      const gif = await encodeGif(frames, {
+        startMs: 0,
+        durationMs: Math.min(track.durationMs, 2000),
+        fps: 8,
+        maxWidth: 160,
+        colors: 64
+      });
 
-  const nonDecreasingPts = frames.every((frame, index) => index === 0 || frames[index - 1].pts <= frame.pts);
-  const hasBFrameTiming = track.samples.some((sample) => sample.pts !== sample.dts);
-  const gifHeader = String.fromCharCode(...gif.slice(0, 6));
+      expect(frames.length).toBeGreaterThan(0);
+      expect(frames.every((frame, index) => index === 0 || frames[index - 1].pts <= frame.pts)).toBe(true);
+      expect(String.fromCharCode(...gif.slice(0, 6))).toBe("GIF89a");
+      expect(gif.byteLength).toBeGreaterThan(0);
 
-  if (frames.length === 0) {
-    throw new Error(`${name}: decoder returned no frames`);
+      if (expectBFrame) {
+        expect(track.samples.some((sample) => sample.pts !== sample.dts)).toBe(true);
+      }
+    }, 120_000);
   }
-  if (!nonDecreasingPts) {
-    throw new Error(`${name}: decoded frame pts are not nondecreasing`);
-  }
-  if (gif.byteLength === 0 || gifHeader !== "GIF89a") {
-    throw new Error(`${name}: invalid gif output`);
-  }
-  if (expectBFrame && !hasBFrameTiming) {
-    throw new Error(`${name}: expected B-frame timing but none found`);
-  }
-
-  console.log(JSON.stringify({
-    name,
-    codec: track.codec,
-    samples: track.samples.length,
-    frames: frames.length,
-    hasBFrameTiming,
-    nonDecreasingPts,
-    gifBytes: gif.byteLength,
-    gifHeader
-  }));
-}
+});

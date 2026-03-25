@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { encodeGif } from "../src/gif";
-import type { DecodedFrame } from "../src/types";
+import { encodeGif } from "../../src/gif";
+import type { DecodedFrame } from "../../src/types";
 
 function makePlane(length: number, value: number): Uint8Array {
   return new Uint8Array(length).fill(value);
@@ -25,6 +25,18 @@ function makeFrame(pts: number): DecodedFrame {
 }
 
 describe("encodeGif", () => {
+  it("returns an empty payload when no frames are selected", async () => {
+    const gif = await encodeGif([], {
+      startMs: 0,
+      durationMs: 200,
+      fps: 10,
+      maxWidth: 2,
+      colors: 16
+    });
+
+    expect(gif).toEqual(new Uint8Array());
+  });
+
   it("encodes at least one GIF frame", async () => {
     const gif = await encodeGif([makeFrame(0), makeFrame(120)], {
       startMs: 0,

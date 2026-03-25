@@ -1,7 +1,7 @@
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { execFileSync } from "node:child_process";
 
 interface FixtureSet {
   baseline: string;
@@ -129,7 +129,7 @@ function buildFixtures(): FixtureSet {
   };
 }
 
-export function ensureFixtures(): FixtureSet {
+export function ensureGeneratedFixtures(): FixtureSet {
   cachedFixtures ??= buildFixtures();
   return cachedFixtures;
 }

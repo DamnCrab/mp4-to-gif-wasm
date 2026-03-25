@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { parseMp4Video } from "../src/mp4";
-import { ensureFixtures, readFixture } from "./fixtures";
+import { parseMp4Video } from "../../src/mp4";
+import { ensureGeneratedFixtures, readFixture } from "../helpers/generated-fixtures";
 
-let fixtures = ensureFixtures();
+let fixtures = ensureGeneratedFixtures();
 
 beforeAll(() => {
-  fixtures = ensureFixtures();
+  fixtures = ensureGeneratedFixtures();
 }, 30_000);
 
 describe("parseMp4Video", () => {
@@ -29,25 +29,16 @@ describe("parseMp4Video", () => {
     expect(track.samples.some((sample) => sample.pts !== sample.dts)).toBe(true);
   }, 30_000);
 
-  it("rejects non-avc1 mp4 codecs", async () => {
+  it("rejects unsupported input variants", async () => {
     await expect(parseMp4Video(readFixture(fixtures.mpeg4))).rejects.toMatchObject({
       code: "unsupported_codec"
     });
-  }, 30_000);
-
-  it("rejects fragmented mp4", async () => {
     await expect(parseMp4Video(readFixture(fixtures.fragmented))).rejects.toMatchObject({
       code: "unsupported_container"
     });
-  }, 30_000);
-
-  it("rejects widths above the worker limit", async () => {
     await expect(parseMp4Video(readFixture(fixtures.oversize))).rejects.toMatchObject({
       code: "input_too_large"
     });
-  }, 30_000);
-
-  it("rejects durations above the worker limit", async () => {
     await expect(parseMp4Video(readFixture(fixtures.tooLong))).rejects.toMatchObject({
       code: "input_too_large"
     });

@@ -63,12 +63,31 @@ const gif = await convertMp4ToGif(mp4ArrayBuffer, {
 ```sh
 npm install
 npm run prepare:ffmpeg
-npm run build:native
-npm run build
 npm run check
 npm test
-npm run test:real-videos
-npm run test:e2e-native
+npm run test:coverage
+npm run build:native
+npm run test:native
+npm run test:browser
+```
+
+## Test Workflow
+
+Tests are organized by scope:
+
+- `test/unit`: fast logic and API-surface tests
+- `test/integration`: Node-side integration tests for parsing, worker behavior, and GIF encoding
+- `test/native`: real Wasm + FFmpeg-backed verification
+- `test/browser`: real Chromium smoke coverage for browser-side Wasm loading
+
+Useful commands:
+
+```sh
+npm run test:unit
+npm run test:integration
+npm run test:coverage
+npm run build:native && npm run test:native
+npm run test:browser
 ```
 
 ## FFmpeg Source And License Compliance
@@ -100,8 +119,8 @@ npm run prepare:ffmpeg
 
 - `src/`: package entrypoints, parser, decoder wrapper, types
 - `native/`: FFmpeg build glue and C ABI layer
-- `scripts/`: fixture generation, native build helpers, experiments, benchmarks
-- `test/`: unit and integration tests
+- `scripts/`: native build helpers and development experiments
+- `test/`: unit, integration, native, browser, and shared test helpers
 
 ## Open Source Notes
 
@@ -113,8 +132,7 @@ Third-party dependencies and upstream source links are tracked in `THIRD_PARTY.m
 
 GitHub Actions cover:
 
-- type checking
-- unit tests
-- native Wasm rebuild
-- real-video boundary tests
-- end-to-end Wasm decode/GIF tests
+- type checking plus coverage reporting
+- Node unit and integration tests
+- native Wasm rebuild and end-to-end verification
+- browser smoke coverage in Chromium

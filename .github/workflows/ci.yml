@@ -9,11 +9,33 @@ on:
 
 jobs:
   test:
+    name: ${{ matrix.suite.name }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - name: unit-integration
+            install_ffmpeg: true
+            install_emsdk: false
+            install_playwright: false
+            command: npm run check && npm run test:coverage
+          - name: native
+            install_ffmpeg: true
+            install_emsdk: true
+            install_playwright: false
+            command: npm run build:native && npm run test:native
+          - name: browser
+            install_ffmpeg: false
+            install_emsdk: false
+            install_playwright: true
+            command: npm run test:browser
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -25,26 +47,30 @@ jobs:
         run: npm ci
 
       - name: Install FFmpeg runtime for fixture generation
+        if: ${{ matrix.suite.install_ffmpeg }}
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
       - name: Prepare FFmpeg source checkout
+        if: ${{ matrix.suite.install_emsdk }}
         run: npm run prepare:ffmpeg
 
       - name: Install Emscripten SDK
+        if: ${{ matrix.suite.install_emsdk }}
         run: |
           git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
           "$RUNNER_TEMP/emsdk/emsdk" install latest
           "$RUNNER_TEMP/emsdk/emsdk" activate latest
 
+      - name: Install Playwright browsers
+        if: ${{ matrix.suite.install_playwright }}
+        run: npx playwright install --with-deps chromium
+
       - name: Run verification
         shell: bash
         run: |
-          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
-          npm run check
-          npm test
-          npm run build:native
-          npm run build
-          npm run test:real-videos
-          npm run test:e2e-native
+          if [ "${{ matrix.suite.install_emsdk }}" = "true" ]; then
+            source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          fi
+          ${{ matrix.suite.command }}
