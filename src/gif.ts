@@ -119,6 +119,16 @@ class WasmGifEncoder {
 
 let gifModulePromise: Promise<WebAssembly.Module> | undefined;
 
+function isNodeRuntime(): boolean {
+  const maybeWindow = globalThis as typeof globalThis & {
+    window?: unknown;
+  };
+
+  return typeof process !== "undefined"
+    && !!process.versions?.node
+    && typeof maybeWindow.window === "undefined";
+}
+
 function getNodeBuiltin<T>(specifier: string): T {
   const nodeProcess = process as NodeJS.Process & {
     getBuiltinModule?: (id: string) => T;
@@ -135,7 +145,7 @@ async function loadGifModule(): Promise<WebAssembly.Module> {
     gifModulePromise = (async () => {
       const wasmUrl = new URL("../native/out/decoder.wasm", import.meta.url);
 
-      if (typeof process !== "undefined" && process.versions?.node) {
+      if (isNodeRuntime()) {
         const { readFile } = getNodeBuiltin<typeof import("node:fs/promises")>("node:fs/promises");
         return await WebAssembly.compile(await readFile(wasmUrl));
       }
@@ -151,7 +161,7 @@ async function loadGifModule(): Promise<WebAssembly.Module> {
 async function instantiateGifModule(): Promise<WebAssembly.Instance> {
   const module = await loadGifModule();
 
-  if (typeof process !== "undefined" && process.versions?.node) {
+  if (isNodeRuntime()) {
     const { WASI } = getNodeBuiltin<typeof import("node:wasi")>("node:wasi");
     const wasi = new WASI({ version: "preview1" });
     const instance = await WebAssembly.instantiate(module, wasi.getImportObject() as WebAssembly.Imports);

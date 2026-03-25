@@ -2,6 +2,13 @@ import { expect, test } from "@playwright/test";
 
 test("encodes a GIF in a real browser using dist assets", async ({ page }) => {
   await page.goto("/test/browser/fixture.html");
+  await page.addInitScript(() => {
+    window.process = {
+      versions: {
+        node: "fake-browser-process"
+      }
+    };
+  });
 
   const result = await page.evaluate(async () => {
     const { encodeGif } = await import("/dist/gif.js");
