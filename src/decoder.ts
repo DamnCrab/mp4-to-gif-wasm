@@ -125,8 +125,17 @@ async function loadDecoderModule(): Promise<WebAssembly.Module> {
         return await WebAssembly.compile(await readFile(wasmUrl));
       }
 
-      const imported = await import("../native/out/decoder.wasm");
-      return imported.default as WebAssembly.Module;
+      try {
+        const imported = await import("../native/out/decoder.wasm");
+        return imported.default as WebAssembly.Module;
+      } catch {
+        const wasmUrl = new URL("../native/out/decoder.wasm", import.meta.url);
+        const response = await fetch(wasmUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to load decoder wasm: ${response.status} ${response.statusText}`);
+        }
+        return await WebAssembly.compile(await response.arrayBuffer());
+      }
     })();
   }
 
