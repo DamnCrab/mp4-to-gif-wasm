@@ -65,7 +65,7 @@ jobs:
 
       - name: Install Playwright browsers
         if: ${{ matrix.suite.install_playwright }}
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Run verification
         shell: bash

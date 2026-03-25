@@ -82,7 +82,7 @@ npm run test:browser
 - `test/unit`: option parsing, API surface, and error mapping
 - `test/integration`: MP4 parsing, worker behavior, and Wasm-backed GIF flow under Node
 - `test/native`: real FFmpeg/Wasm verification against generated and real fixtures
-- `test/browser`: Chromium smoke coverage against built `dist/*` assets
+- `test/browser`: multi-browser coverage for direct `dist/*` consumption plus Vite and webpack consumer builds
 - `test/package`: built-package import plus real user-flow smoke for Node ESM and Worker consumers
 
 CI runs:
