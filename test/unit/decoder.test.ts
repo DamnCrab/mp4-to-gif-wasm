@@ -64,6 +64,7 @@ describe("H264Decoder", () => {
     } as unknown as WebAssembly.Instance);
 
     const decoder = await H264Decoder.create(track);
+    expect(exports.decoder_open).toHaveBeenCalledOnce();
     const frames = decoder.decode(track);
 
     expect(exports._initialize).toHaveBeenCalledOnce();

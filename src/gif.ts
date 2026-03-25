@@ -130,7 +130,7 @@ function getNodeProcess(): NodeProcessWithBuiltins | undefined {
 }
 
 function isNodeRuntime(): boolean {
-  if ("window" in globalThis) {
+  if ((globalThis as typeof globalThis & { window?: unknown }).window !== undefined) {
     return false;
   }
 
@@ -147,58 +147,70 @@ function getNodeBuiltin<T>(specifier: string): T {
   if (!builtin) {
     throw new Error(`Missing Node builtin: ${specifier}`);
   }
-  return builtin as unknown as T;
+  return builtin as T;
 }
 
 function createBrowserWasiImports(getMemory: () => WebAssembly.Memory | undefined): WebAssembly.Imports {
-  function withView<T>(callback: (view: DataView) => T): T | undefined {
+  const WASI_ERRNO_SUCCESS = 0;
+  const WASI_ERRNO_FAULT = 21;
+
+  function getView(): DataView | undefined {
     const memory = getMemory();
     if (!memory) {
       return undefined;
     }
-    return callback(new DataView(memory.buffer));
+    return new DataView(memory.buffer);
   }
 
   return {
     wasi_snapshot_preview1: {
       fd_close(): number {
-        return 0;
+        return WASI_ERRNO_SUCCESS;
       },
       fd_read(_fd: number, _iovs: number, _iovsLen: number, nreadPtr: number): number {
-        withView((view) => {
-          view.setUint32(nreadPtr, 0, true);
-        });
-        return 0;
+        const view = getView();
+        if (!view) {
+          return WASI_ERRNO_FAULT;
+        }
+        view.setUint32(nreadPtr, 0, true);
+        return WASI_ERRNO_SUCCESS;
       },
       fd_write(_fd: number, iovs: number, iovsLen: number, nwrittenPtr: number): number {
-        withView((view) => {
-          let written = 0;
-          for (let index = 0; index < iovsLen; index += 1) {
-            const entryPtr = iovs + (index * 8);
-            written += view.getUint32(entryPtr + 4, true);
-          }
-          view.setUint32(nwrittenPtr, written, true);
-        });
-        return 0;
+        const view = getView();
+        if (!view) {
+          return WASI_ERRNO_FAULT;
+        }
+        let written = 0;
+        for (let index = 0; index < iovsLen; index += 1) {
+          const entryPtr = iovs + (index * 8);
+          written += view.getUint32(entryPtr + 4, true);
+        }
+        view.setUint32(nwrittenPtr, written, true);
+        return WASI_ERRNO_SUCCESS;
       },
       clock_time_get(_clockId: number, _precision: bigint, timePtr: number): number {
-        withView((view) => {
-          view.setBigUint64(timePtr, BigInt(Date.now()) * 1_000_000n, true);
-        });
-        return 0;
+        const view = getView();
+        if (!view) {
+          return WASI_ERRNO_FAULT;
+        }
+        view.setBigUint64(timePtr, BigInt(Date.now()) * 1_000_000n, true);
+        return WASI_ERRNO_SUCCESS;
       },
       fd_fdstat_get(_fd: number, statPtr: number): number {
         const memory = getMemory();
-        if (memory) {
-          new Uint8Array(memory.buffer, statPtr, 24).fill(0);
+        if (!memory) {
+          return WASI_ERRNO_FAULT;
         }
-        return 0;
+        new Uint8Array(memory.buffer, statPtr, 24).fill(0);
+        return WASI_ERRNO_SUCCESS;
       },
       fd_seek(_fd: number, _offset: bigint, _whence: number, newOffsetPtr: number): number {
-        withView((view) => {
-          view.setBigUint64(newOffsetPtr, 0n, true);
-        });
-        return 0;
+        const view = getView();
+        if (!view) {
+          return WASI_ERRNO_FAULT;
+        }
+        view.setBigUint64(newOffsetPtr, 0n, true);
+        return WASI_ERRNO_SUCCESS;
       }
     }
   };

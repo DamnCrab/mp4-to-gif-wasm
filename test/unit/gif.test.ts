@@ -35,7 +35,7 @@ describe("encodeGif runtime detection", () => {
     const getBuiltinModule = vi.fn();
     vi.stubGlobal("process", {
       versions: {
-        node: "fake-browser-process"
+        node: "22.0.0"
       },
       release: {
         name: "node"
