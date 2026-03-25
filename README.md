@@ -83,7 +83,7 @@ npm run test:browser
 - `test/integration`: MP4 parsing, worker behavior, and Wasm-backed GIF flow under Node
 - `test/native`: real FFmpeg/Wasm verification against generated and real fixtures
 - `test/browser`: Chromium smoke coverage against built `dist/*` assets
-- `test/package`: built-package import smoke for Node ESM consumers
+- `test/package`: built-package import plus real user-flow smoke for Node ESM and Worker consumers
 
 CI runs:
 

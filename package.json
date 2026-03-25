@@ -49,7 +49,7 @@
     "test:integration": "vitest run --config vitest.config.mjs test/integration",
     "test:native": "vitest run --config vitest.native.config.mjs",
     "test:browser": "npm run build && playwright test",
-    "test:dist": "npm run build && node ./test/package/dist-import.mjs",
+    "test:dist": "npm run build && node ./test/package/dist-import.mjs && node ./test/package/user-flows.mjs",
     "test:coverage": "vitest run --config vitest.config.mjs --coverage",
     "test:ci": "npm run check && npm run test:coverage && npm run test:dist && npm run build:native && npm run test:native && npm run test:browser",
     "build:native": "node ./scripts/build-native.mjs",
