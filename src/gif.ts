@@ -120,13 +120,13 @@ class WasmGifEncoder {
 let gifModulePromise: Promise<WebAssembly.Module> | undefined;
 
 function isNodeRuntime(): boolean {
-  const maybeWindow = globalThis as typeof globalThis & {
-    window?: unknown;
+  const nodeProcess = process as NodeJS.Process & {
+    getBuiltinModule?: (id: string) => unknown;
   };
 
   return typeof process !== "undefined"
     && !!process.versions?.node
-    && typeof maybeWindow.window === "undefined";
+    && typeof nodeProcess.getBuiltinModule === "function";
 }
 
 function getNodeBuiltin<T>(specifier: string): T {
