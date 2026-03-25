@@ -22,6 +22,12 @@ interface GifExports {
   gif_encoder_close(): void;
 }
 
+interface GifEncodeAttempt {
+  maxWidth: number;
+  fps: number;
+  colors: number;
+}
+
 function selectFrames(frames: DecodedFrame[], options: GifJobOptions): DecodedFrame[] {
   const selected: DecodedFrame[] = [];
   const endMs = options.startMs + options.durationMs;
@@ -40,6 +46,51 @@ function selectFrames(frames: DecodedFrame[], options: GifJobOptions): DecodedFr
   }
 
   return selected;
+}
+
+function clampWidth(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 1;
+  }
+
+  const rounded = Math.max(1, Math.floor(value));
+  return rounded % 2 === 0 ? rounded : rounded - 1 || 1;
+}
+
+function buildEncodeAttempts(options: GifJobOptions): GifEncodeAttempt[] {
+  const candidates: GifEncodeAttempt[] = [
+    {
+      maxWidth: options.maxWidth,
+      fps: options.fps,
+      colors: options.colors
+    },
+    {
+      maxWidth: clampWidth(options.maxWidth * 0.8),
+      fps: Math.max(6, Math.floor(options.fps * 0.8)),
+      colors: Math.max(96, Math.floor(options.colors * 0.75))
+    },
+    {
+      maxWidth: clampWidth(options.maxWidth * 0.66),
+      fps: Math.max(4, Math.floor(options.fps * 0.66)),
+      colors: Math.max(64, Math.floor(options.colors * 0.5))
+    }
+  ];
+
+  return candidates.filter((candidate, index) => {
+    return candidates.findIndex((entry) => {
+      return entry.maxWidth === candidate.maxWidth
+        && entry.fps === candidate.fps
+        && entry.colors === candidate.colors;
+    }) === index;
+  });
+}
+
+function isRetryableGifError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return /malloc failed|gif_encoder_add_frame failed: -48|gif_encoder_finish failed: -48/i.test(error.message);
 }
 
 class WasmGifEncoder {
@@ -245,22 +296,37 @@ async function instantiateGifModule(): Promise<WebAssembly.Instance> {
 }
 
 export async function encodeGif(frames: DecodedFrame[], options: GifJobOptions): Promise<Uint8Array> {
-  const selectedFrames = selectFrames(frames, options);
-  if (selectedFrames.length === 0) {
-    return new Uint8Array();
-  }
+  const attempts = buildEncodeAttempts(options);
+  let lastError: unknown;
 
-  const width = Math.min(options.maxWidth, selectedFrames[0].width);
-  const height = Math.max(1, Math.round(selectedFrames[0].height * (width / selectedFrames[0].width)));
-  const delay = Math.max(1, Math.round((1000 / options.fps) / 10));
-  const encoder = await WasmGifEncoder.create(width, height, delay, options.colors);
-
-  try {
-    for (const frame of selectedFrames) {
-      encoder.addFrame(frame);
+  for (const attempt of attempts) {
+    const selectedFrames = selectFrames(frames, {
+      ...options,
+      fps: attempt.fps
+    });
+    if (selectedFrames.length === 0) {
+      return new Uint8Array();
     }
-    return encoder.finish();
-  } finally {
-    encoder.close();
+
+    const width = Math.min(attempt.maxWidth, selectedFrames[0].width);
+    const height = Math.max(1, Math.round(selectedFrames[0].height * (width / selectedFrames[0].width)));
+    const delay = Math.max(1, Math.round((1000 / attempt.fps) / 10));
+    const encoder = await WasmGifEncoder.create(width, height, delay, attempt.colors);
+
+    try {
+      for (const frame of selectedFrames) {
+        encoder.addFrame(frame);
+      }
+      return encoder.finish();
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableGifError(error) || attempt === attempts[attempts.length - 1]) {
+        throw error;
+      }
+    } finally {
+      encoder.close();
+    }
   }
+
+  throw lastError instanceof Error ? lastError : new Error("GIF encoding failed");
 }

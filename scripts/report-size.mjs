@@ -1,9 +1,10 @@
-import { statSync } from "node:fs";
-import { gzipSync } from "node:zlib";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import { gzipSync } from "node:zlib";
 
-const wasmPath = resolve(process.cwd(), "native/out/decoder.wasm");
+const distWasmPath = resolve(process.cwd(), "dist/decoder.wasm");
+const nativeWasmPath = resolve(process.cwd(), "native/out/decoder.wasm");
+const wasmPath = existsSync(distWasmPath) ? distWasmPath : nativeWasmPath;
 
 try {
   const raw = readFileSync(wasmPath);

@@ -19,7 +19,7 @@ jobs:
             install_ffmpeg: true
             install_emsdk: false
             install_playwright: false
-            command: npm run check && npm run test:coverage
+            command: npm run check && npm run test:coverage && npm run test:dist
           - name: native
             install_ffmpeg: true
             install_emsdk: true

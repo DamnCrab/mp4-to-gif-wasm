@@ -8,7 +8,7 @@ export async function convertMp4ToGif(
   buffer: ArrayBuffer,
   options: GifJobOptions
 ): Promise<Uint8Array> {
-  const track = await parseMp4Video(buffer, 5000, 480);
+  const track = await parseMp4Video(buffer);
   const decoder = await H264Decoder.create(track);
   const frames = decoder.decode(track);
 

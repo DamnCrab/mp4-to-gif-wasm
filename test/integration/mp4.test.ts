@@ -16,9 +16,12 @@ describe("parseMp4Video", () => {
     expect(track.width).toBe(320);
     expect(track.height).toBe(180);
     expect(track.durationMs).toBeGreaterThan(1000);
+    expect(track.timescale).toBe(1000);
     expect(track.avcc.byteLength).toBeGreaterThan(0);
     expect(track.samples.length).toBeGreaterThan(0);
     expect(track.samples.some((sample) => sample.isSync)).toBe(true);
+    expect(track.samples.every((sample) => sample.dts >= 0 && sample.pts >= 0)).toBe(true);
+    expect(track.samples.every((sample) => sample.dts <= track.durationMs + 1000)).toBe(true);
   }, 30_000);
 
   it("preserves b-frame timing differences", async () => {
@@ -36,11 +39,15 @@ describe("parseMp4Video", () => {
     await expect(parseMp4Video(readFixture(fixtures.fragmented))).rejects.toMatchObject({
       code: "unsupported_container"
     });
-    await expect(parseMp4Video(readFixture(fixtures.oversize))).rejects.toMatchObject({
-      code: "input_too_large"
-    });
-    await expect(parseMp4Video(readFixture(fixtures.tooLong))).rejects.toMatchObject({
-      code: "input_too_large"
-    });
+  }, 30_000);
+
+  it("accepts large source assets and leaves clipping to output options", async () => {
+    const oversize = await parseMp4Video(readFixture(fixtures.oversize));
+    const tooLong = await parseMp4Video(readFixture(fixtures.tooLong));
+
+    expect(oversize.width).toBeGreaterThan(480);
+    expect(oversize.samples.length).toBeGreaterThan(0);
+    expect(tooLong.durationMs).toBeGreaterThan(5000);
+    expect(tooLong.samples.length).toBeGreaterThan(0);
   }, 30_000);
 });

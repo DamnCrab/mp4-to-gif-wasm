@@ -1,32 +1,31 @@
 # `mp4-to-gif-wasm`
 
-`mp4-to-gif-wasm` is a focused npm package for converting short H.264 MP4 clips into GIFs with a bundled FFmpeg-based WebAssembly pipeline.
+`mp4-to-gif-wasm` converts H.264 MP4 clips into GIFs with a bundled FFmpeg-based WebAssembly pipeline.
 
-It is usable as:
+It is designed to work out of the box in:
 
-- a generic npm package
-- a low-level Wasm-backed conversion library
+- Node.js ESM
+- modern browsers
+- bundler-based Worker runtimes such as Cloudflare Workers
 
-## Scope
+## What It Does
 
-Current input and runtime constraints:
+- parses MP4 in JavaScript
+- decodes H.264 in Wasm
+- encodes GIF in Wasm with FFmpeg palette filters
+- exports both library APIs and a Worker-style `fetch()` handler
 
-- input container: MP4
-- supported video codec: `avc1` / H.264 only
-- B-frames: supported
+## Runtime Support
+
+- container: MP4
+- video codec: `avc1` / H.264
 - audio: ignored
-- input limits: `<= 5s`, `<= 480px` width
+- B-frames: supported
 - output: GIF
+- Node: `>= 22`
+- module format: ESM only
 
-The current architecture keeps MP4 demux in JavaScript and runs decode plus GIF generation in Wasm.
-
-## Features
-
-- H.264 decode in WebAssembly
-- B-frame-safe MP4 sample handling
-- FFmpeg-based GIF palette pipeline in Wasm
-- TypeScript API surface
-- Cloudflare Worker entrypoint included
+Important: size and duration limits apply to the requested GIF output parameters, not to the original source asset. A source video may be longer than 5 seconds or wider than 480 pixels as long as the requested output clip stays within the configured limits.
 
 ## Install
 
@@ -34,17 +33,7 @@ The current architecture keeps MP4 demux in JavaScript and runs decode plus GIF 
 npm install mp4-to-gif-wasm
 ```
 
-## API Surface
-
-The package exports:
-
-- `convertMp4ToGif(buffer, options)`
-- `parseMp4Video(buffer)`
-- `encodeGif(frames, options)`
-- `H264Decoder`
-- `worker`
-
-## Example
+## Quick Start
 
 ```ts
 import { convertMp4ToGif } from "mp4-to-gif-wasm";
@@ -58,6 +47,22 @@ const gif = await convertMp4ToGif(mp4ArrayBuffer, {
 });
 ```
 
+## Exports
+
+- `convertMp4ToGif(buffer, options)`
+- `parseMp4Video(buffer)`
+- `encodeGif(frames, options)`
+- `H264Decoder`
+- `worker`
+- `parseGifJobOptions(url)`
+- `WorkerError`
+- `toErrorResponse(error)`
+
+## Usage Guides
+
+- [USAGE.md](./USAGE.md): Node, browser, and Cloudflare Worker examples
+- [KNOWN_ISSUES.md](./KNOWN_ISSUES.md): limitations, failure modes, and mitigation notes
+
 ## Development
 
 ```sh
@@ -66,41 +71,39 @@ npm run prepare:ffmpeg
 npm run check
 npm test
 npm run test:coverage
+npm run test:dist
 npm run build:native
 npm run test:native
 npm run test:browser
 ```
 
-## Test Workflow
+## Test Suites
 
-Tests are organized by scope:
+- `test/unit`: option parsing, API surface, and error mapping
+- `test/integration`: MP4 parsing, worker behavior, and Wasm-backed GIF flow under Node
+- `test/native`: real FFmpeg/Wasm verification against generated and real fixtures
+- `test/browser`: Chromium smoke coverage against built `dist/*` assets
+- `test/package`: built-package import smoke for Node ESM consumers
 
-- `test/unit`: fast logic and API-surface tests
-- `test/integration`: Node-side integration tests for parsing, worker behavior, and GIF encoding
-- `test/native`: real Wasm + FFmpeg-backed verification
-- `test/browser`: real Chromium smoke coverage for browser-side Wasm loading
+CI runs:
 
-Useful commands:
-
-```sh
-npm run test:unit
-npm run test:integration
-npm run test:coverage
-npm run build:native && npm run test:native
-npm run test:browser
-```
+- type checking
+- coverage reporting
+- built-package import smoke
+- native rebuild plus end-to-end verification
+- browser smoke coverage
 
 ## FFmpeg Source And License Compliance
 
 This package distributes a WebAssembly binary that statically links selected FFmpeg libraries.
 
 - FFmpeg upstream repository: [https://github.com/FFmpeg/FFmpeg](https://github.com/FFmpeg/FFmpeg)
-- Pinned FFmpeg source used for builds: Git submodule at `vendor/ffmpeg`
-- Pinned upstream ref: `n7.1.1`
-- Build script: `native/build-ffmpeg.sh`
-- Submodule bootstrap script: `scripts/prepare-ffmpeg.sh`
+- pinned source checkout: Git submodule at `vendor/ffmpeg`
+- pinned upstream ref: `n7.1.1`
+- build script: `native/build-ffmpeg.sh`
+- bootstrap script: `scripts/prepare-ffmpeg.sh`
 
-For source availability and redistribution details, see `FFMPEG_COMPLIANCE.md`.
+See `FFMPEG_COMPLIANCE.md` and `THIRD_PARTY.md` for source availability and redistribution notes.
 
 ## Native Build Prerequisites
 
@@ -109,30 +112,8 @@ For source availability and redistribution details, see `FFMPEG_COMPLIANCE.md`.
 - Binaryen / `wasm-opt`
 - FFmpeg source checkout in `vendor/ffmpeg`
 
-Initialize the pinned FFmpeg submodule with:
+Initialize the pinned FFmpeg checkout with:
 
 ```sh
 npm run prepare:ffmpeg
 ```
-
-## Repository Layout
-
-- `src/`: package entrypoints, parser, decoder wrapper, types
-- `native/`: FFmpeg build glue and C ABI layer
-- `scripts/`: native build helpers and development experiments
-- `test/`: unit, integration, native, browser, and shared test helpers
-
-## Open Source Notes
-
-This repository ships a bundled Wasm binary linked against FFmpeg libraries. The repository is therefore published under `LGPL-2.1-or-later`.
-
-Third-party dependencies and upstream source links are tracked in `THIRD_PARTY.md`.
-
-## CI
-
-GitHub Actions cover:
-
-- type checking plus coverage reporting
-- Node unit and integration tests
-- native Wasm rebuild and end-to-end verification
-- browser smoke coverage in Chromium
