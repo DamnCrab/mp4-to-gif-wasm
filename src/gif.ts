@@ -119,25 +119,101 @@ class WasmGifEncoder {
 
 let gifModulePromise: Promise<WebAssembly.Module> | undefined;
 
-function isNodeRuntime(): boolean {
-  const nodeProcess = process as NodeJS.Process & {
-    getBuiltinModule?: (id: string) => unknown;
-  };
+type NodeProcessWithBuiltins = NodeJS.Process & {
+  getBuiltinModule?: <T>(id: string) => T | undefined;
+};
 
-  return typeof process !== "undefined"
-    && !!process.versions?.node
+function getNodeProcess(): NodeProcessWithBuiltins | undefined {
+  return (globalThis as typeof globalThis & {
+    process?: NodeProcessWithBuiltins;
+  }).process;
+}
+
+function isNodeRuntime(): boolean {
+  if ((globalThis as typeof globalThis & { window?: unknown }).window !== undefined) {
+    return false;
+  }
+
+  const nodeProcess = getNodeProcess();
+
+  return !!nodeProcess?.versions?.node
+    && nodeProcess.release?.name === "node"
     && typeof nodeProcess.getBuiltinModule === "function";
 }
 
 function getNodeBuiltin<T>(specifier: string): T {
-  const nodeProcess = process as NodeJS.Process & {
-    getBuiltinModule?: (id: string) => T;
-  };
-  const builtin = nodeProcess.getBuiltinModule?.(specifier);
+  const nodeProcess = getNodeProcess();
+  const builtin = nodeProcess?.getBuiltinModule?.(specifier);
   if (!builtin) {
     throw new Error(`Missing Node builtin: ${specifier}`);
   }
-  return builtin as unknown as T;
+  return builtin as T;
+}
+
+function createBrowserWasiImports(getMemory: () => WebAssembly.Memory | undefined): WebAssembly.Imports {
+  const WASI_ERRNO_SUCCESS = 0;
+  const WASI_ERRNO_FAULT = 21;
+
+  function getView(): DataView | undefined {
+    const memory = getMemory();
+    if (!memory) {
+      return undefined;
+    }
+    return new DataView(memory.buffer);
+  }
+
+  return {
+    wasi_snapshot_preview1: {
+      fd_close(): number {
+        return WASI_ERRNO_SUCCESS;
+      },
+      fd_read(_fd: number, _iovs: number, _iovsLen: number, nreadPtr: number): number {
+        const view = getView();
+        if (!view) {
+          return WASI_ERRNO_FAULT;
+        }
+        view.setUint32(nreadPtr, 0, true);
+        return WASI_ERRNO_SUCCESS;
+      },
+      fd_write(_fd: number, iovs: number, iovsLen: number, nwrittenPtr: number): number {
+        const view = getView();
+        if (!view) {
+          return WASI_ERRNO_FAULT;
+        }
+        let written = 0;
+        for (let index = 0; index < iovsLen; index += 1) {
+          const entryPtr = iovs + (index * 8);
+          written += view.getUint32(entryPtr + 4, true);
+        }
+        view.setUint32(nwrittenPtr, written, true);
+        return WASI_ERRNO_SUCCESS;
+      },
+      clock_time_get(_clockId: number, _precision: bigint, timePtr: number): number {
+        const view = getView();
+        if (!view) {
+          return WASI_ERRNO_FAULT;
+        }
+        view.setBigUint64(timePtr, BigInt(Date.now()) * 1_000_000n, true);
+        return WASI_ERRNO_SUCCESS;
+      },
+      fd_fdstat_get(_fd: number, statPtr: number): number {
+        const memory = getMemory();
+        if (!memory) {
+          return WASI_ERRNO_FAULT;
+        }
+        new Uint8Array(memory.buffer, statPtr, 24).fill(0);
+        return WASI_ERRNO_SUCCESS;
+      },
+      fd_seek(_fd: number, _offset: bigint, _whence: number, newOffsetPtr: number): number {
+        const view = getView();
+        if (!view) {
+          return WASI_ERRNO_FAULT;
+        }
+        view.setBigUint64(newOffsetPtr, 0n, true);
+        return WASI_ERRNO_SUCCESS;
+      }
+    }
+  };
 }
 
 async function loadGifModule(): Promise<WebAssembly.Module> {
@@ -169,7 +245,9 @@ async function instantiateGifModule(): Promise<WebAssembly.Instance> {
     return instance;
   }
 
-  const instance = await WebAssembly.instantiate(module, {} as WebAssembly.Imports);
+  let instance: WebAssembly.Instance | undefined;
+  const imports = createBrowserWasiImports(() => (instance?.exports as unknown as GifExports | undefined)?.memory);
+  instance = await WebAssembly.instantiate(module, imports);
   const exports = instance.exports as unknown as GifExports;
   exports._initialize?.();
   return instance;
