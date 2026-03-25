@@ -20,6 +20,8 @@ const track: Mp4TrackInfo = {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  vi.resetModules();
 });
 
 function createDecoderExports(overrides: Partial<Record<string, unknown>> = {}) {
@@ -46,6 +48,48 @@ function createDecoderExports(overrides: Partial<Record<string, unknown>> = {}) 
 }
 
 describe("H264Decoder", () => {
+  it("prefers browser-style wasm loading when window is available", async () => {
+    const getBuiltinModule = vi.fn();
+    vi.stubGlobal("process", {
+      versions: {
+        node: "22.0.0"
+      },
+      release: {
+        name: "node"
+      },
+      getBuiltinModule
+    });
+    vi.stubGlobal("window", {});
+
+    const exports = createDecoderExports({
+      decoder_receive_frame: vi.fn().mockReturnValue(1)
+    });
+
+    const instantiate = vi.spyOn(WebAssembly, "instantiate").mockResolvedValue({
+      exports
+    } as unknown as WebAssembly.Instance);
+
+    const { H264Decoder: RuntimeAwareDecoder } = await import("../../src/decoder");
+    const decoder = await RuntimeAwareDecoder.create(track);
+    decoder.close();
+
+    expect(getBuiltinModule).not.toHaveBeenCalled();
+    expect(instantiate).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        wasi_snapshot_preview1: expect.objectContaining({
+          fd_close: expect.any(Function),
+          fd_read: expect.any(Function),
+          fd_write: expect.any(Function),
+          clock_time_get: expect.any(Function),
+          fd_fdstat_get: expect.any(Function),
+          fd_seek: expect.any(Function)
+        })
+      })
+    );
+    expect(exports._initialize).toHaveBeenCalledOnce();
+  });
+
   it("opens the decoder, decodes frames, and closes it", async () => {
     const exports = createDecoderExports();
     const metaPtr = 128;
