@@ -119,25 +119,89 @@ class WasmGifEncoder {
 
 let gifModulePromise: Promise<WebAssembly.Module> | undefined;
 
-function isNodeRuntime(): boolean {
-  const nodeProcess = process as NodeJS.Process & {
-    getBuiltinModule?: (id: string) => unknown;
-  };
+type NodeProcessWithBuiltins = NodeJS.Process & {
+  getBuiltinModule?: <T>(id: string) => T | undefined;
+};
 
-  return typeof process !== "undefined"
-    && !!process.versions?.node
+function getNodeProcess(): NodeProcessWithBuiltins | undefined {
+  return (globalThis as typeof globalThis & {
+    process?: NodeProcessWithBuiltins;
+  }).process;
+}
+
+function isNodeRuntime(): boolean {
+  if ("window" in globalThis) {
+    return false;
+  }
+
+  const nodeProcess = getNodeProcess();
+
+  return !!nodeProcess?.versions?.node
+    && nodeProcess.release?.name === "node"
     && typeof nodeProcess.getBuiltinModule === "function";
 }
 
 function getNodeBuiltin<T>(specifier: string): T {
-  const nodeProcess = process as NodeJS.Process & {
-    getBuiltinModule?: (id: string) => T;
-  };
-  const builtin = nodeProcess.getBuiltinModule?.(specifier);
+  const nodeProcess = getNodeProcess();
+  const builtin = nodeProcess?.getBuiltinModule?.(specifier);
   if (!builtin) {
     throw new Error(`Missing Node builtin: ${specifier}`);
   }
   return builtin as unknown as T;
+}
+
+function createBrowserWasiImports(getMemory: () => WebAssembly.Memory | undefined): WebAssembly.Imports {
+  function withView<T>(callback: (view: DataView) => T): T | undefined {
+    const memory = getMemory();
+    if (!memory) {
+      return undefined;
+    }
+    return callback(new DataView(memory.buffer));
+  }
+
+  return {
+    wasi_snapshot_preview1: {
+      fd_close(): number {
+        return 0;
+      },
+      fd_read(_fd: number, _iovs: number, _iovsLen: number, nreadPtr: number): number {
+        withView((view) => {
+          view.setUint32(nreadPtr, 0, true);
+        });
+        return 0;
+      },
+      fd_write(_fd: number, iovs: number, iovsLen: number, nwrittenPtr: number): number {
+        withView((view) => {
+          let written = 0;
+          for (let index = 0; index < iovsLen; index += 1) {
+            const entryPtr = iovs + (index * 8);
+            written += view.getUint32(entryPtr + 4, true);
+          }
+          view.setUint32(nwrittenPtr, written, true);
+        });
+        return 0;
+      },
+      clock_time_get(_clockId: number, _precision: bigint, timePtr: number): number {
+        withView((view) => {
+          view.setBigUint64(timePtr, BigInt(Date.now()) * 1_000_000n, true);
+        });
+        return 0;
+      },
+      fd_fdstat_get(_fd: number, statPtr: number): number {
+        const memory = getMemory();
+        if (memory) {
+          new Uint8Array(memory.buffer, statPtr, 24).fill(0);
+        }
+        return 0;
+      },
+      fd_seek(_fd: number, _offset: bigint, _whence: number, newOffsetPtr: number): number {
+        withView((view) => {
+          view.setBigUint64(newOffsetPtr, 0n, true);
+        });
+        return 0;
+      }
+    }
+  };
 }
 
 async function loadGifModule(): Promise<WebAssembly.Module> {
@@ -169,7 +233,9 @@ async function instantiateGifModule(): Promise<WebAssembly.Instance> {
     return instance;
   }
 
-  const instance = await WebAssembly.instantiate(module, {} as WebAssembly.Imports);
+  let instance: WebAssembly.Instance | undefined;
+  const imports = createBrowserWasiImports(() => (instance?.exports as unknown as GifExports | undefined)?.memory);
+  instance = await WebAssembly.instantiate(module, imports);
   const exports = instance.exports as unknown as GifExports;
   exports._initialize?.();
   return instance;
