@@ -17,7 +17,9 @@ const distFilesToRewrite = [
 
 for (const filePath of distFilesToRewrite) {
   const source = readFileSync(filePath, "utf8");
-  const rewritten = source.replaceAll("../native/out/decoder.wasm", "./decoder.wasm");
+  const rewritten = source
+    .replaceAll("../native/out/decoder.wasm?url", "./decoder.wasm?url")
+    .replaceAll("../native/out/decoder.wasm", "./decoder.wasm");
   if (source !== rewritten) {
     writeFileSync(filePath, rewritten);
   }

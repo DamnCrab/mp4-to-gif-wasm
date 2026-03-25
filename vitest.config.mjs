@@ -18,6 +18,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "../native/out/decoder.wasm?url": fileURLToPath(new URL("./test/helpers/wasm-url-stub.ts", import.meta.url)),
       "../native/out/decoder.wasm": fileURLToPath(new URL("./test/helpers/wasm-stub.ts", import.meta.url))
     }
   }

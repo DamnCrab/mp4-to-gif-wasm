@@ -53,7 +53,7 @@ await new Promise((resolvePromise, rejectPromise) => {
     module: {
       rules: [
         {
-          test: /\.wasm$/,
+          resourceQuery: /url/,
           type: "asset/resource"
         }
       ]
