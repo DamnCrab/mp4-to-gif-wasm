@@ -1,7 +1,7 @@
-import { H264Decoder } from "./decoder";
-import { WorkerError } from "./errors";
-import { encodeGif } from "./gif";
-import { parseMp4Video } from "./mp4";
+import { H264Decoder } from "./decoder.js";
+import { WorkerError } from "./errors.js";
+import { encodeGif } from "./gif.js";
+import { parseMp4Video } from "./mp4.js";
 import type { GifJobOptions } from "./types";
 
 export async function convertMp4ToGif(

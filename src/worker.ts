@@ -1,6 +1,6 @@
-import { parseGifJobOptions } from "./options";
-import { convertMp4ToGif } from "./pipeline";
-import { toErrorResponse, WorkerError } from "./errors";
+import { parseGifJobOptions } from "./options.js";
+import { convertMp4ToGif } from "./pipeline.js";
+import { toErrorResponse, WorkerError } from "./errors.js";
 
 function assertRoute(request: Request, url: URL): void {
   if (request.method !== "POST" || url.pathname !== "/v1/mp4-to-gif") {

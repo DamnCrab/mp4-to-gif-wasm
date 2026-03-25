@@ -1,4 +1,4 @@
-import { WorkerError } from "./errors";
+import { WorkerError } from "./errors.js";
 import type { GifJobOptions } from "./types";
 
 const DEFAULTS: GifJobOptions = {

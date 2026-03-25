@@ -1,10 +1,10 @@
-export { default as worker } from "./worker";
-export { H264Decoder } from "./decoder";
-export { convertMp4ToGif } from "./pipeline";
-export { encodeGif } from "./gif";
-export { parseMp4Video } from "./mp4";
-export { parseGifJobOptions } from "./options";
-export { WorkerError, toErrorResponse } from "./errors";
+export { default as worker } from "./worker.js";
+export { H264Decoder } from "./decoder.js";
+export { convertMp4ToGif } from "./pipeline.js";
+export { encodeGif } from "./gif.js";
+export { parseMp4Video } from "./mp4.js";
+export { parseGifJobOptions } from "./options.js";
+export { WorkerError, toErrorResponse } from "./errors.js";
 export type {
   DecodeFrameMeta,
   DecodedFrame,

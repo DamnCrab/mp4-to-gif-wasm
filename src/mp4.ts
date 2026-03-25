@@ -1,5 +1,5 @@
 import { createFile, type ISOFile, type Movie, type Track } from "mp4box";
-import { WorkerError } from "./errors";
+import { WorkerError } from "./errors.js";
 import type { DecodedVideoSample, Mp4TrackInfo } from "./types";
 
 type MP4File = ISOFile<unknown, unknown>;
@@ -95,12 +95,17 @@ function assertSupportedTrack(info: Movie, track: Track): void {
   if (!track.codec.startsWith("avc1")) {
     throw new WorkerError("unsupported_codec", `unsupported codec: ${track.codec}`);
   }
-  if (track.edits && track.edits.length > 0) {
-    throw new WorkerError("unsupported_feature", "edit list is not supported");
-  }
   if (!isIdentityMatrix(track.matrix)) {
     throw new WorkerError("unsupported_feature", "rotation / transform matrix is not supported");
   }
+}
+
+function toMilliseconds(value: number, timescale: number): number {
+  if (!Number.isFinite(value) || !Number.isFinite(timescale) || timescale <= 0) {
+    return 0;
+  }
+
+  return Math.round((value / timescale) * 1000);
 }
 
 export async function parseMp4Video(buffer: ArrayBuffer, maxDurationMs = 5000, maxWidth = 480): Promise<Mp4TrackInfo> {
@@ -108,6 +113,10 @@ export async function parseMp4Video(buffer: ArrayBuffer, maxDurationMs = 5000, m
 
   return await new Promise<Mp4TrackInfo>((resolve, reject) => {
     const samples: DecodedVideoSample[] = [];
+    let extractionTimescale = 1000;
+
+    void maxDurationMs;
+    void maxWidth;
 
     file.onError = (_module, message) => reject(new WorkerError("unsupported_container", message));
     file.onSamples = (_trackId, _user, chunkSamples) => {
@@ -118,8 +127,8 @@ export async function parseMp4Video(buffer: ArrayBuffer, maxDurationMs = 5000, m
         }
         samples.push({
           data: sample.data instanceof Uint8Array ? sample.data : new Uint8Array(sample.data),
-          dts: sample.dts,
-          pts: sample.cts,
+          dts: toMilliseconds(sample.dts, extractionTimescale),
+          pts: toMilliseconds(sample.cts, extractionTimescale),
           isSync: sample.is_sync
         });
       }
@@ -131,16 +140,11 @@ export async function parseMp4Video(buffer: ArrayBuffer, maxDurationMs = 5000, m
 
         const { width, height } = getTrackDimensions(track);
         const durationMs = Math.round((track.movie_duration / track.movie_timescale) * 1000);
-        if (durationMs > maxDurationMs) {
-          throw new WorkerError("input_too_large", `video duration exceeds ${maxDurationMs}ms`);
-        }
-        if (width > maxWidth) {
-          throw new WorkerError("input_too_large", `video width exceeds ${maxWidth}px`);
-        }
         if (width <= 0 || height <= 0) {
           throw new WorkerError("unsupported_container", "invalid track dimensions");
         }
 
+        extractionTimescale = track.movie_timescale;
         file.setExtractionOptions(track.id, undefined, {
           nbSamples: track.nb_samples
         });
@@ -152,7 +156,7 @@ export async function parseMp4Video(buffer: ArrayBuffer, maxDurationMs = 5000, m
           width,
           height,
           durationMs,
-          timescale: track.movie_timescale,
+          timescale: 1000,
           avcc: extractAvcc(file, track.id),
           samples
         });

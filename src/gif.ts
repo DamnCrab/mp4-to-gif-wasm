@@ -219,15 +219,14 @@ function createBrowserWasiImports(getMemory: () => WebAssembly.Memory | undefine
 async function loadGifModule(): Promise<WebAssembly.Module> {
   if (!gifModulePromise) {
     gifModulePromise = (async () => {
-      const wasmUrl = new URL("../native/out/decoder.wasm", import.meta.url);
-
       if (isNodeRuntime()) {
+        const wasmUrl = new URL("../native/out/decoder.wasm", import.meta.url);
         const { readFile } = getNodeBuiltin<typeof import("node:fs/promises")>("node:fs/promises");
         return await WebAssembly.compile(await readFile(wasmUrl));
       }
 
-      const response = await fetch(wasmUrl);
-      return await WebAssembly.compile(await response.arrayBuffer());
+      const imported = await import("../native/out/decoder.wasm");
+      return imported.default as WebAssembly.Module;
     })();
   }
 
@@ -236,14 +235,6 @@ async function loadGifModule(): Promise<WebAssembly.Module> {
 
 async function instantiateGifModule(): Promise<WebAssembly.Instance> {
   const module = await loadGifModule();
-
-  if (isNodeRuntime()) {
-    const { WASI } = getNodeBuiltin<typeof import("node:wasi")>("node:wasi");
-    const wasi = new WASI({ version: "preview1" });
-    const instance = await WebAssembly.instantiate(module, wasi.getImportObject() as WebAssembly.Imports);
-    wasi.initialize(instance);
-    return instance;
-  }
 
   let instance: WebAssembly.Instance | undefined;
   const imports = createBrowserWasiImports(() => (instance?.exports as unknown as GifExports | undefined)?.memory);
