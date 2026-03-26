@@ -15,6 +15,7 @@ await viteBuild({
   configFile: false,
   root: resolve(consumersRoot, "vite"),
   publicDir: false,
+  base: "./",
   resolve: {
     alias: {
       "mp4-to-gif-wasm/worker": resolve(root, "dist", "worker.js"),
