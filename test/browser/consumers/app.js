@@ -1,5 +1,5 @@
 import { encodeGif } from "mp4-to-gif-wasm";
-import { worker } from "mp4-to-gif-wasm/worker";
+import worker from "mp4-to-gif-wasm/worker";
 
 function makePlane(length, value) {
   return new Uint8Array(length).fill(value);

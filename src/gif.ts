@@ -277,15 +277,6 @@ async function loadGifModule(): Promise<WebAssembly.Module> {
       }
 
       try {
-        const imported = await import("../native/out/decoder.wasm");
-        if (imported.default instanceof WebAssembly.Module) {
-          return imported.default;
-        }
-      } catch {
-        // Fall through to URL-based loading for bundlers that expose wasm as an asset URL.
-      }
-
-      try {
         const imported = await import("../native/out/decoder.wasm?url");
         const response = await fetch(imported.default);
         if (!response.ok) {

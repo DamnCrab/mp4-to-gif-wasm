@@ -2,6 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DecodedFrame } from "../../src/types";
 
+const wasmBytes = new Uint8Array([
+  0x00, 0x61, 0x73, 0x6d,
+  0x01, 0x00, 0x00, 0x00
+]);
+
 function makePlane(length: number, value: number): Uint8Array {
   return new Uint8Array(length).fill(value);
 }
@@ -43,6 +48,12 @@ describe("encodeGif runtime detection", () => {
       getBuiltinModule
     });
     vi.stubGlobal("window", {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(wasmBytes, {
+      status: 200,
+      headers: {
+        "content-type": "application/wasm"
+      }
+    })));
 
     const memory = new WebAssembly.Memory({ initial: 1 });
     let nextPtr = 64;

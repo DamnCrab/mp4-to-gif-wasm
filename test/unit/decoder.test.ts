@@ -3,6 +3,11 @@ import { H264Decoder } from "../../src/decoder";
 
 import type { Mp4TrackInfo } from "../../src/types";
 
+const wasmBytes = new Uint8Array([
+  0x00, 0x61, 0x73, 0x6d,
+  0x01, 0x00, 0x00, 0x00
+]);
+
 const track: Mp4TrackInfo = {
   codec: "avc1.64001f",
   width: 320,
@@ -60,6 +65,12 @@ describe("H264Decoder", () => {
       getBuiltinModule
     });
     vi.stubGlobal("window", {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(wasmBytes, {
+      status: 200,
+      headers: {
+        "content-type": "application/wasm"
+      }
+    })));
 
     const exports = createDecoderExports({
       decoder_receive_frame: vi.fn().mockReturnValue(1)
