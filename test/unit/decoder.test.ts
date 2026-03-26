@@ -3,6 +3,11 @@ import { H264Decoder } from "../../src/decoder";
 
 import type { Mp4TrackInfo } from "../../src/types";
 
+const wasmBytes = new Uint8Array([
+  0x00, 0x61, 0x73, 0x6d,
+  0x01, 0x00, 0x00, 0x00
+]);
+
 const track: Mp4TrackInfo = {
   codec: "avc1.64001f",
   width: 320,
@@ -20,6 +25,8 @@ const track: Mp4TrackInfo = {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  vi.resetModules();
 });
 
 function createDecoderExports(overrides: Partial<Record<string, unknown>> = {}) {
@@ -46,6 +53,54 @@ function createDecoderExports(overrides: Partial<Record<string, unknown>> = {}) 
 }
 
 describe("H264Decoder", () => {
+  it("prefers browser-style wasm loading when window is available", async () => {
+    const getBuiltinModule = vi.fn();
+    vi.stubGlobal("process", {
+      versions: {
+        node: "22.0.0"
+      },
+      release: {
+        name: "node"
+      },
+      getBuiltinModule
+    });
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(wasmBytes, {
+      status: 200,
+      headers: {
+        "content-type": "application/wasm"
+      }
+    })));
+
+    const exports = createDecoderExports({
+      decoder_receive_frame: vi.fn().mockReturnValue(1)
+    });
+
+    const instantiate = vi.spyOn(WebAssembly, "instantiate").mockResolvedValue({
+      exports
+    } as unknown as WebAssembly.Instance);
+
+    const { H264Decoder: RuntimeAwareDecoder } = await import("../../src/decoder");
+    const decoder = await RuntimeAwareDecoder.create(track);
+    decoder.close();
+
+    expect(getBuiltinModule).not.toHaveBeenCalled();
+    expect(instantiate).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        wasi_snapshot_preview1: expect.objectContaining({
+          fd_close: expect.any(Function),
+          fd_read: expect.any(Function),
+          fd_write: expect.any(Function),
+          clock_time_get: expect.any(Function),
+          fd_fdstat_get: expect.any(Function),
+          fd_seek: expect.any(Function)
+        })
+      })
+    );
+    expect(exports._initialize).toHaveBeenCalledOnce();
+  });
+
   it("opens the decoder, decodes frames, and closes it", async () => {
     const exports = createDecoderExports();
     const metaPtr = 128;

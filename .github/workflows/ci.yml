@@ -1,5 +1,8 @@
 name: CI
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches:
@@ -10,26 +13,47 @@ on:
 jobs:
   test:
     name: ${{ matrix.suite.name }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.suite.runs_on }}
     strategy:
       fail-fast: false
       matrix:
         suite:
           - name: unit-integration
+            runs_on: ubuntu-latest
             install_ffmpeg: true
             install_emsdk: false
             install_playwright: false
             command: npm run check && npm run test:coverage && npm run test:dist
           - name: native
+            runs_on: ubuntu-latest
             install_ffmpeg: true
             install_emsdk: true
             install_playwright: false
             command: npm run build:native && npm run test:native
-          - name: browser
+          - name: browser-ubuntu
+            runs_on: ubuntu-latest
             install_ffmpeg: false
             install_emsdk: false
             install_playwright: true
             command: npm run test:browser
+          - name: browser-macos
+            runs_on: macos-latest
+            install_ffmpeg: false
+            install_emsdk: false
+            install_playwright: true
+            command: npm run test:browser
+          - name: browser-windows
+            runs_on: windows-latest
+            install_ffmpeg: false
+            install_emsdk: false
+            install_playwright: true
+            command: npm run test:browser
+          - name: browser-channels
+            runs_on: ubuntu-latest
+            install_ffmpeg: false
+            install_emsdk: false
+            install_playwright: true
+            command: npm run test:browser:channels
 
     steps:
       - name: Check out repository
@@ -40,7 +64,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
 
       - name: Install npm dependencies
@@ -64,8 +88,16 @@ jobs:
           "$RUNNER_TEMP/emsdk/emsdk" activate latest
 
       - name: Install Playwright browsers
-        if: ${{ matrix.suite.install_playwright }}
+        if: ${{ matrix.suite.install_playwright && runner.os == 'Linux' && matrix.suite.name != 'browser-channels' }}
         run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Install Playwright browsers (non-Linux)
+        if: ${{ matrix.suite.install_playwright && runner.os != 'Linux' }}
+        run: npx playwright install chromium firefox webkit
+
+      - name: Install branded browser channels
+        if: ${{ matrix.suite.name == 'browser-channels' }}
+        run: npx playwright install --with-deps chrome chrome-beta msedge
 
       - name: Run verification
         shell: bash
