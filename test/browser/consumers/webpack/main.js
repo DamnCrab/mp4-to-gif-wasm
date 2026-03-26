@@ -1,1 +1,3 @@
-import "../app.js";
+import { runVanillaConsumer } from "../app.js";
+
+void runVanillaConsumer("webpack");

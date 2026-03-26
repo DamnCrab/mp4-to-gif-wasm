@@ -1,3 +1,3 @@
 import { runVanillaConsumer } from "../app.js";
 
-void runVanillaConsumer("vite");
+void runVanillaConsumer("esbuild");

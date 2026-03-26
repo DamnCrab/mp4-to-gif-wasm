@@ -82,7 +82,7 @@ npm run test:browser
 - `test/unit`: option parsing, API surface, and error mapping
 - `test/integration`: MP4 parsing, worker behavior, and Wasm-backed GIF flow under Node
 - `test/native`: real FFmpeg/Wasm verification against generated and real fixtures
-- `test/browser`: multi-browser coverage for direct `dist/*` consumption plus Vite and webpack consumer builds
+- `test/browser`: multi-browser coverage for direct `dist/*` consumption plus Vite, webpack, and esbuild consumer builds, including vanilla, React, and Vue consumers
 - `test/package`: built-package import plus real user-flow smoke for Node ESM and Worker consumers
 
 CI runs:
@@ -91,7 +91,7 @@ CI runs:
 - coverage reporting
 - built-package import smoke
 - native rebuild plus end-to-end verification
-- browser smoke coverage
+- browser smoke coverage on Node 24 across Linux, macOS, and Windows, plus branded browser-channel smoke checks
 
 ## FFmpeg Source And License Compliance
 
